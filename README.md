@@ -27,7 +27,12 @@ This script should be run on any one of the Storage Spaces Direct cluster node.
 ### Example 1 ###
 The below example downloads VMFleet framework and diskspd.exe from the sources provided in the script.
 
-.\Prepare-VMFleet.ps1 -VMTemplatePath \\100.12.132.21\vmstore\vmfleet.vhdx 
+    $secpasswd = ConvertTo-SecureString 'Dell1234' -AsPlainText -Force
+    $vmCreds = New-Object System.Management.Automation.PSCredential ('Administrator', $secpasswd)
+    $hostConnectCreds = New-Object System.Management.Automation.PSCredential ('cloud\Administrator', $secpasswd)
+    $ShareCreds = New-Object System.Management.Automation.PSCredential ('cloud\Administrator', $secpasswd)
+    
+    .\Prepare-VMFleet.ps1 -VMTemplatePath \\100.12.132.21\vmstore\vmfleet.vhdx 
 
 
 
