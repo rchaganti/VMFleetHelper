@@ -11,7 +11,7 @@ This script should be run on any one of the Storage Spaces Direct cluster node.
 ### Parameters ###
 | Parameter Name  | Description | Default Value | Is Mandatory? |
 | -------------   | ------------- | ------------- | ------------- |
-| vmFleetArchive  | Path to the VM Fleet download.| https://github.com/Microsoft/diskspd/archive/master.zip | No |
+| vmFleetArchive  | Path to the VM Fleet download. This should be an archive of the https://github.com/Microsoft/diskspd Github repo and not just a VMFleet framework folder. This can be placed at a UNC path as well. If the UNC path requires authentication, you ca supply that using ShareCredential parameter. | https://github.com/Microsoft/diskspd/archive/master.zip | No |
 | diskSpdArchive  | 
 | VmCount         |
 | VmCpuCount      |
