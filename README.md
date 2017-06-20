@@ -77,6 +77,79 @@ PauseBetweenIterationInSeconds | Specifies how long to pause between iterations.
 |FixedDuration| Specifies the fixed duration for each iteration. Valid range is 60-3600 seconds | - | No |
 |BaseResultFolderName|Specifies the base folder name for storing the result xml for each iteration.|VmFleetTests|No|
 
+This script has only four run templates for vmfleet. You can add more by updating the following section in the script.
+
+```powershell
+$runTemplate = @(
+    @{
+        b = 4
+        p = 'r'
+        w = 0
+        t = 2
+        o = 20
+        d = $(
+            if ($FixedDuration)
+            { 
+                $FixedDuration
+            } 
+            else
+            {
+                (Get-Random -Minimum 300 -Maximum 3600)
+            }
+        )
+    },
+    @{
+        b = 512
+        p = 'r'
+        w = 0
+        t = 8
+        o = 20
+        d = $(
+            if ($FixedDuration)
+            { 
+                $FixedDuration
+            } 
+            else
+            {
+                (Get-Random -Minimum 300 -Maximum 3600)
+            }
+        )
+    },
+    @{
+        b = 4
+        w = 10
+        t = 2
+        o = 20
+        d = $(
+            if ($FixedDuration)
+            { 
+                $FixedDuration
+            } 
+            else
+            {
+                (Get-Random -Minimum 300 -Maximum 3600)
+            }
+        )
+    },
+    @{
+        b = 4
+        w = 10
+        t = 2
+        o = 20
+        d = $(
+            if ($FixedDuration)
+            { 
+                $FixedDuration
+            } 
+            else
+            {
+                (Get-Random -Minimum 300 -Maximum 3600)
+            }
+        )
+    }
+)
+``` 
+
 ### Example 1 ###
 This example shows using Run-RandomTemplate.ps1 with fixed duration.
 
