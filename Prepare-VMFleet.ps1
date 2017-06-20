@@ -159,7 +159,7 @@ process
     Expand-Archive -Path "${env:TEMP}\${diskSPDFileName}" -DestinationPath "${env:TEMP}\diskspd" -Force
 
     #Copy diskspd.exe to c:\vmfleet
-    copy -Path "${env:TEMP}\diskspd\amd64fre\diskspd.exe" -Destination C:\VMFleet -Force
+    Copy-Item -Path "${env:TEMP}\diskspd\amd64fre\diskspd.exe" -Destination C:\VMFleet -Force
 
     #cleanup diskspd files
     Remove-Item -Path "${env:TEMP}\${diskSPDFileName}" -Force

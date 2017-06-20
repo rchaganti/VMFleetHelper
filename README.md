@@ -25,14 +25,68 @@ This script should be run on any one of the Storage Spaces Direct cluster node.
 
 
 ### Example 1 ###
-The below example downloads VMFleet framework and diskspd.exe from the sources provided in the script.
+The below example downloads VMFleet framework and diskspd.exe from the sources provided in the script. This example assumes that the VMFleet VMs need to be created and the CSVs required for that will be provisioned as well.
 
+```powershell
     $secpasswd = ConvertTo-SecureString 'Dell1234' -AsPlainText -Force
     $vmCreds = New-Object System.Management.Automation.PSCredential ('Administrator', $secpasswd)
     $hostConnectCreds = New-Object System.Management.Automation.PSCredential ('cloud\Administrator', $secpasswd)
-    $ShareCreds = New-Object System.Management.Automation.PSCredential ('cloud\Administrator', $secpasswd)
+    $shareCreds = New-Object System.Management.Automation.PSCredential ('cloud\Administrator', $secpasswd)
     
-    .\Prepare-VMFleet.ps1 -VMTemplatePath \\100.12.132.21\vmstore\vmfleet.vhdx 
+    .\Prepare-VMFleet.ps1 -VMTemplatePath \\100.12.132.21\vmstore\vmfleet.vhdx `
+                          -VMAdministratorCredential $vmCreds `
+                          -HostConnectCredential $hostConnectCreds `
+                          -ShareCredential $shareCreds
+```
 
+### Example 2 ###
+The below example downloads VMFleet framework and diskspd.exe from the sources provided in the script and updates the existing C:\VMFleet folder with the newly downloaded versions of VMFleet framework and diskspd.
 
+```powershell
+    $secpasswd = ConvertTo-SecureString 'Dell1234' -AsPlainText -Force
+    $shareCreds = New-Object System.Management.Automation.PSCredential ('cloud\Administrator', $secpasswd)
+    
+    .\Prepare-VMFleet.ps1 -SkipVMCreation `
+                          -SkipCSVCreation `
+                          -ShareCredential $shareCreds
+```
 
+### Example 3 ###
+The below example copies the VMFleet framework and diskspd archives from the UNC path and updates the existing C:\VMFleet folder.
+
+```powershell
+    $secpasswd = ConvertTo-SecureString 'Dell1234' -AsPlainText -Force
+    $shareCreds = New-Object System.Management.Automation.PSCredential ('cloud\Administrator', $secpasswd)
+    
+    .\Prepare-VMFleet.ps1 -SkipVMCreation `
+                          -SkipCSVCreation `
+                          -ShareCredential $shareCreds `
+                          -VMFleetArchive \\100.98.22.8\d$\vmfleet.zip `
+                          -diskSpdArchive \\100.98.22.8\d$\diskspd.zip
+```
+
+## Run-RandomTemplate ##
+The [Run-RandomTemplate.ps1](https://raw.githubusercontent.com/rchaganti/VMFleetHelper/master/Run-RandomTemplate.ps1) script is designed run vmfleet based on a random template selected from a list of available run templates.
+
+### Parameters ###
+| Parameter Name  | Description | Default Value | Is Mandatory? |
+| -------------   | ------------- | ------------- | ------------- |
+| NumberOfIterations | Specifies the number of vmfleet iterations.| 100 | No|
+PauseBetweenIterationInSeconds | Specifies how long to pause between iterations. | 30 seconds | No|
+|DeleteResultXml| Specifies if the result XML files should be deleted after each iteration. | False | No |
+|FixedDuration| Specifies the fixed duration for each iteration. Valid range is 60-3600 seconds | - | No |
+|BaseResultFolderName|Specifies the base folder name for storing the result xml for each iteration.|VmFleetTests|No|
+
+### Example 1 ###
+This example shows using Run-RandomTemplate.ps1 with fixed duration.
+
+```powershell
+    .\Run-RandomTemplate.ps1 -FixedDuration 120 -Verbose
+```
+
+### Example 2 ###
+This example shows using Run-RandomTemplate.ps1 with fixed duration and less number of iterations.
+
+```powershell
+    .\Run-RandomTemplate.ps1 -NumberOfIterations 5 -FixedDuration 120 -Verbose
+```

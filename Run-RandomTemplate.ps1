@@ -15,7 +15,7 @@ param (
     [Int] $FixedDuration,
 
     [Parameter()]
-    [String] $BaseResultFolderName = 'TestRun1'
+    [String] $BaseResultFolderName = 'VmFleetTests'
 )
 
 if ($FixedDuration)
@@ -121,7 +121,7 @@ for ($i = 1; $i -le $NumberOfIterations; $i++)
     else
     {
         Write-Verbose -Message "[Iteration : ${i}] Discarding all result XML files ..."
-        Del 'C:\ClusterStorage\Collect\Control\Result\*.xml'
+        Remove-Item 'C:\ClusterStorage\Collect\Control\Result\*.xml'
     }
 
     Write-Verbose -Message "[Iteration : ${i}] Setting pause on VMs ..."
