@@ -163,3 +163,39 @@ This example shows using Run-RandomTemplate.ps1 with fixed duration and less num
 ```powershell
     .\Run-RandomTemplate.ps1 -NumberOfIterations 5 -FixedDuration 120 -Verbose
 ```
+
+## Invoke-S2DNodeExpansionAndMonitoring
+
+This script needs to be run from one of the cluster nodes part of an existing S2D clsuter.
+It accepts the cluster name and the new node name which will be added to the S2D cluster. The script
+will add the node to the cluster and will wait for a specific time (default 1 hour) for the **Rebalance**
+storage job to spawn, one can force the kick-off of the rebalancing storage job by specifying the
+$KickStartJob switch while invoking the script.
+Once the storage job is started the script will keep monitoring and displaying the storage job queue
+until the job finishes.
+
+### Parameters ###
+| Parameter Name  | Description | Default Value | Is Mandatory? |
+| -------------   | ------------- | ------------- | ------------- |
+| ClusterName  | Name of the S2D cluster which is to be expanded | - | Yes |
+| ComputerName | Name of the new node which will be added to the above cluster| - | Yes |
+| KickStartJob | Switch which instructs the script to kick off the storage job when it times out the 1 hour wait | - | - |
+
+### Example 1 ###
+The below example will add the new node named *NewNode5* to the existing S2D cluster named *S2DCluster1*.
+It will then wait an hour for the rebalancing storage job to be triggered. If the job does not start
+on its own then the script will throw an error.
+
+```powershell
+    
+    .\Invoke-S2DNodeExpansionAndMonitoring.ps1 -Clustername S2DCluster1 -ComputerName NewNode5
+```
+
+### Example 2 ###
+The below example will add the new node named *NewNode5* to the existing S2D cluster named *S2DCluster1*.
+It will then wait an hour for the rebalancing storage job to be triggered. If the job does not start
+on its own then the script will go ahead and kick start the job itself and start monitoring it.
+
+```powershell
+    .\Invoke-S2DNodeExpansionAndMonitoring.ps1 -Clustername S2DCluster1 -ComputerName NewNode5 -KickStartJob
+```
