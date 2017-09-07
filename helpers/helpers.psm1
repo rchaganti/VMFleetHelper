@@ -183,3 +183,108 @@ Function Get-CSVSize {
     }
     
 }
+
+
+#region Functions for monitoring the S2D expansion scenarios
+Function Wait-ForTheNewStorageJob {
+    [CmdletBinding()]
+    param(
+
+        # Specify the name or pattern of the Job's name to look out for
+        # S2D kicks off the job named Optimize or Rebalance when rebalancing the virtual disk
+        # across nodes
+        [Parameter()]
+        [ValidateSet('Rebalance','Optimize')]
+        [String]$JobName,
+
+        # Specify the max time in seconds to wait for a new storage job to spin up
+        [Parameter()]
+        [int]$TotalSecondsToWait =  3600,
+
+        # Specify time interval to wait between checking the Job queue
+        [Parameter()]
+        [int]$SleepWait
+    )
+    $StopWatch = New-Object -TypeName System.Diagnostics.Stopwatch
+    $StopWatch.Start()
+    $OriginalJobQueue = Get-StorageJob
+    if ($OriginalJobQueue) {
+        Write-Warning -Message "StorageJob queue alread has Jobs named > 
+            $(($OriginalJobQueue | Select-Object -ExpandProperty Name) -join ';')"
+    }
+
+    While ($StopWatch.Elapsed.Seconds -lt $TotalSecondsToWait) 
+    {
+        $newJobQueue = Get-StorageJob
+        $compareQueue = Compare-Object -ReferenceObject $newJobQueue -DifferenceObject $OriginalJobQueue |
+                            Where-Object -Property SideIndicator -eq '<='
+
+        if ($compareQueue) 
+        {
+            Write-Verbose -Message "New jobs found, seeing if the job name matches `*$JobName`* pattern"
+            $newJobmatch = $compareQueue.InputObject | Where-Object -Property Name -like "*$JobName*"
+            
+            if ($newJobmatch) 
+            {
+                # Job matching the name found. Stop.
+                $StopWatch.Stop()
+                Write-Verbose -Message "New jobs found matching the pattern found in the storage job queue. Stopping the wait."
+                Write-Host -Fore Green "New jobs found. Stop watch metric > $($StopWatch.Elapsed | Out-String)"
+                return $newJobmatch # return the JobObject back
+            }
+            else 
+            {
+                Write-Verbose -Message "Job matching the $Jobname not found"
+            }
+            
+        }
+        Write-Verbose -Message "Sleeping $SleepWait seconds"
+        Start-Sleep -Seconds $SleepWait        
+    }
+    $StopWatch.Stop()
+    Write-Host -Foreground Red "No jobs spawned. Stop watch metric > $($StopWatch.Elapsed | Out-String)"
+    # if the control reached here that means the new job never spawned in the max time
+    throw "No new job spawned in the Storage job queue in time $(TotalSecondsToWait) seconds"
+}
+
+Function Monitor-StorageJob {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory,
+                    ValueFromPipeline)]
+        [ Microsoft.Management.Infrastructure.CimInstance]$InputObject,
+
+        [Parameter()]
+        [int]$SleepInterval = 30
+    )
+
+    $UniqueJobId = $InputObject.UniqueId
+    $Stop = $false
+    $StopWatch = New-Object -TypeName System.Diagnostics.Stopwatch
+    Write-Host -ForeGround Cyan -Object "Starting the monitoring"
+    $StopWatch.Start()
+    do 
+    {
+        # verify that there is a Job present. Some jobs e.g. Rebalance get deleted after completion
+        $StorageJob = Get-StorageJob -UniqueId $UniqueJobId -ErrorAction SilentlyContinue
+        if (-not $StorageJob) 
+        {
+            Write-Host -ForeGround Red "Job with name $($StorageJob.Name) and UniqueID $UniqueJobId not found."
+            $Stop = $True
+        }
+        Write-Host "Time elapsed:" -ForegroundColor Cyan -NoNewLine
+        write-Host "$($StopWatch.Elapsed.Hours) hours and $($StopWatch.Elapsed.Minutes) minutes elapsed since start" -ForegroundColor Cyan
+        Write-Host -ForeGround Cyan -Object "====== Storage Job Queue ======"
+        Get-StorageJob | Format-Table -AutoSize
+        Write-Host -ForeGround Cyan -Object "====== Storage Job Queue ======"
+        Write-Verbose -Message "Sleeping for $SleepInterval seconds."
+        Start-Sleep -seconds $SleepInterval
+    } while ( ($StorageJob.JobState -eq 'Running') -or $Stop)
+    
+    Write-Host "Stopping StopWatch" -ForegroundColor Cyan
+    $StopWatch.Stop()
+    Write-Host -ForegroundColor Green -Object "Stop watch metric > $($StopWatch.Elapsed | Out-String)"
+    
+}
+
+#endregion
