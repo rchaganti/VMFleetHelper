@@ -288,3 +288,21 @@ Function Monitor-StorageJob {
 }
 
 #endregion
+
+
+#region template functions
+Function Set-TemplateArgument {
+    [CmdletBinding()]
+    param(
+        [Parameter()]
+        [String]$Key,
+
+        [Parameter()]
+        [String]$Value,
+
+        [Parameter()]
+        [System.Collections.Hashtable]$InputObject
+    )
+    $InputObject['DiskSPDArgs'][$Key] = $Value
+}
+#endregion
