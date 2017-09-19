@@ -1,31 +1,41 @@
 ﻿[CmdletBinding()]
 param (
+    # Specify the link to the archive housing the VMFleet. Defaults to GitHub repo link
     [Parameter()]
     [ValidateScript({})]
     [String] $vmFleetArchive = 'https://github.com/Microsoft/diskspd/archive/master.zip',
 
+    # Specify the link to the archive housing the DiskSPD. Defaults to Technet download link v2.0.17
     [Parameter()]
     [String] $diskSpdArchive = 'https://gallery.technet.microsoft.com/DiskSpd-a-robust-storage-6cd2f223/file/152702/1/Diskspd-v2.0.17.zip',
 
+    #  the number of vms per node per csv (group) to create 
     [Parameter()]
     [Int] $VmCount=10,
 
+    # Customize the individual VM CPU count
     [Parameter()]
     [Int] $VmCpuCount = 2,
 
+    # Customize the individual VM Memory size
     [Parameter()]
     [Long] $VmMemory = 4GB,
 
+    # Path to the template VHD for the VM creation
     [Parameter(Mandatory)]
     [ValidateScript({$vhdPath = Get-Item -Path $_; ($vhdPath.Extension -eq '.vhd') -or ($vhdPath.Extension -eq '.vhdx')})]
     [String] $VMTemplatePath,
 
+    # password for the VM-local administrative user is only picked. Username is ignored.
     [Parameter(Mandatory)]
     [pscredential] $VMAdministratorCredential,
 
+    # Credentials to establish the loopback connection to the host
     [Parameter(Mandatory)]
     [pscredential] $HostConnectCredential,
 
+    # Specify share credential 
+    # This share houses the template VHD or VMFleet/DiskSPD archives.
     [Parameter()]
     [pscredential] $ShareCredential,
 
@@ -33,73 +43,38 @@ param (
     [Switch] $SkipVMFleetCreation,
 
     [Parameter()]
-    [Switch] $SkipCSVCreation
+    [Switch] $SkipCSVCreation,
+
+    # Specify this switch to skip creation of Multi-resilient volumes (less performant as of now)
+    [Switch]$SkipMRV
 
 )
-
+begin
+{
+    Import-Module $PSScriptRoot\helpers\helpers.psm1
+}
 process
 {
     #region VMFleet files
     #Check if C:\Vmfleet exists and delete
     if (Test-Path -Path C:\VmFleet)
     {
-        Write-Verbose -Message 'C:\VmFleet exists. This will be deleted'
+        Write-Warning -Message 'C:\VmFleet exists. This will be deleted'
         Remove-Item -Path C:\VMFleet -Recurse -Force
     }
     
     #check if we need to copy or download the VMFleet Archive
     $vmFleet = [System.Uri]$vmFleetArchive
     $vmFleetFileName = $vmFleet.Segments[-1]
-    if ($vmFleet.IsUnc)
-    {
-        #We have a UNC Path
-        $copyArgs = @{
-            Path        = $vmFleetArchive
-            Destination = "${env:TEMP}\${vmFleetFileName}"
-        }
-        
-        #If ShareCredentials are specified, add them to parameters
-        if ($ShareCredential)
-        {
-            $copyArgs.Add('Credential',$ShareCredential)
-        }
-
-        try
-        {
-            Write-Verbose -Message 'Copying VMFleet Archive from the path provided.'
-            Copy-Item @copyArgs -Force
-        }
-        catch
-        {
-            throw $_
-        }
-    }
-    elseif (($vmFleet.Scheme -eq 'https') -or ($vmFleet.Scheme -eq 'https'))
-    {
-        #we have a URL
-        $downloadArgs = @{
-            Uri = $vmFleetArchive
-            OutFile = "${env:TEMP}\${vmFleetFileName}"
-        }
-        
-        try
-        {
-            Write-Verbose -Message 'Downloading the VMFleet Archive from the path provided.'
-            Invoke-WebRequest @downloadArgs
-        }
-        catch
-        {
-            throw $_
-        }
-    }
-
+    Copy-Archive -URI $vmFleet -Destination "${env:TEMP}\${vmFleetFileName}" -ShareCredential $ShareCredential
+ 
     #Extract the archive
     Write-Verbose -Message 'Unblocking and extracting the VM Fleet archive'
     Unblock-File -Path "${env:TEMP}\${vmFleetFileName}"
     Expand-Archive -Path "${env:TEMP}\${vmFleetFileName}" -DestinationPath $env:TEMP -Force
 
     #Copy VMFleet folder to C:\ as source for Install-VmFleet.ps1
-    copy -Path "${env:Temp}\diskspd-master\Frameworks\VMFleet" -Destination C:\VMFleet -Recurse
+    Copy-Item -Path "${env:Temp}\diskspd-master\Frameworks\VMFleet" -Destination C:\VMFleet -Recurse
 
     #Clean up Temp
     Remove-Item -Path "${env:TEMP}\${vmFleetFileName}" -Force
@@ -110,48 +85,7 @@ process
     #check if we need to copy or download the VMFleet Archive
     $diskSPD = [System.Uri]$diskSpdArchive
     $diskSPDFileName = $diskSPD.Segments[-1]
-    if ($diskSPD.IsUnc)
-    {
-        #We have a UNC Path
-        $copyArgs = @{
-            Path        = $diskSpdArchive
-            Destination = "${env:TEMP}\${diskSPDFileName}"
-        }
-        
-        #If ShareCredentials are specified, add them to parameters
-        if ($ShareCredential)
-        {
-            $copyArgs.Add('Credential',$ShareCredential)
-        }
-
-        try
-        {
-            Write-Verbose -Message 'Copying Diskspd Archive from the path provided.'
-            Copy-Item @copyArgs -Force
-        }
-        catch
-        {
-            throw $_
-        }
-    }
-    elseif (($diskSPD.Scheme -eq 'https') -or ($diskSPD.Scheme -eq 'https'))
-    {
-        #we have a URL
-        $downloadArgs = @{
-            Uri = $diskSpdArchive
-            OutFile = "${env:TEMP}\${diskSPDFileName}"
-        }
-        
-        try
-        {
-            Write-Verbose -Message 'Downloading the Diskspd Archive from the path provided.'
-            Invoke-WebRequest @downloadArgs
-        }
-        catch
-        {
-            throw $_
-        }
-    }
+    Copy-Archive -URI $diskSPD -Destination "${env:TEMP}\${diskSPDFileName}" -ShareCredential $ShareCredential
 
     #Extract the archive
     Write-Verbose -Message 'Unblocking and extracting the Diskspd archive'
@@ -167,17 +101,18 @@ process
     #endregion     
 
     #region CSV setup
-    if (-not $SkipCSVCreation)
+    if (-not $SkipCSVCreation.ISPresent)
     {
         try
         {
             Write-Verbose -Message 'Creating CSV volumes for VMFleet runs'
-            Get-ClusterNode |% { New-Volume -StoragePoolFriendlyName "S2D*" -FriendlyName $_ -FileSystem CSVFS_ReFS -StorageTierfriendlyNames Performance,Capacity -StorageTierSizes 1TB , 200GB }
-            New-Volume -StoragePoolFriendlyName "*s2d*" -FriendlyName collect -FileSystem CSVFS_ReFS -StorageTierFriendlyNames Capacity -StorageTierSizes 1TB
+            $NewVolumeParam = Get-S2DClusterVolumeCreationParams -VMTemplatePath $VMTemplatePath -VMCount $VmCount # This is a helper function to generate params automatically for CSV creation below
+            Get-ClusterNode |ForEach-Object -Process { New-Volume -StoragePoolFriendlyName "S2D*" -FriendlyName $PSItem.Name @NewVolumeParam }
+            New-Volume -StoragePoolFriendlyName "*s2d*" -FriendlyName collect -FileSystem CSVFS_ReFS -Size 1TB 
         }
         catch
         {
-            thorw $_
+            throw $_
         }
     }
     #endregion
@@ -200,7 +135,7 @@ process
     #endregion
 
     #region create VM Fleet
-    if (-not $SkipVMFleetCreation)
+    if (-not $SkipVMFleetCreation.ISPresent)
     {
         #region VM template
         #Verify if template VHD exists or not
@@ -214,7 +149,7 @@ process
 
             if ($ShareCredential)
             {
-                Credential = $ShareCredential
+                $vhdCopyArgs.Add('Credential',$ShareCredential)
             }
         
             try

@@ -27,74 +27,10 @@ else
     Write-Verbose -Message 'Each test run will have a random duration determined at run time.'
 }
 
-$runTemplate = @(
-    @{
-        b = 4
-        p = 'r'
-        w = 0
-        t = 2
-        o = 20
-        d = $(
-            if ($FixedDuration)
-            { 
-                $FixedDuration
-            } 
-            else
-            {
-                (Get-Random -Minimum 300 -Maximum 3600)
-            }
-        )
-    },
-    @{
-        b = 512
-        p = 'r'
-        w = 0
-        t = 8
-        o = 20
-        d = $(
-            if ($FixedDuration)
-            { 
-                $FixedDuration
-            } 
-            else
-            {
-                (Get-Random -Minimum 300 -Maximum 3600)
-            }
-        )
-    },
-    @{
-        b = 4
-        w = 10
-        t = 2
-        o = 20
-        d = $(
-            if ($FixedDuration)
-            { 
-                $FixedDuration
-            } 
-            else
-            {
-                (Get-Random -Minimum 300 -Maximum 3600)
-            }
-        )
-    },
-    @{
-        b = 4
-        w = 10
-        t = 2
-        o = 20
-        d = $(
-            if ($FixedDuration)
-            { 
-                $FixedDuration
-            } 
-            else
-            {
-                (Get-Random -Minimum 300 -Maximum 3600)
-            }
-        )
-    }
-)
+$RunTemplates = @()
+Foreach ($file in (Get-ChildItem -Path $PSScriptRoot\Templates\*.psd1 -ErrorAction SilentlyContinue)){
+    $RunTemplates += Import-PowerShellDataFile -Path $File.Fullname
+}
 
 for ($i = 1; $i -le $NumberOfIterations; $i++)
 {
@@ -105,9 +41,18 @@ for ($i = 1; $i -le $NumberOfIterations; $i++)
     Start-Sleep -Seconds 30
 
     Write-Verbose -Message "[Iteration : ${i}] Starting Sweep ..."
-    $randomIndex = Get-Random -Minimum 0 -Maximum $runTemplate.Count
-    $seletctedRandomTemplate = $runTemplate[$randomIndex]
-    .\Start-Sweep.ps1 @seletctedRandomTemplate
+    $randomTemplate = $RunTemplates | Get-Random
+    Write-Verbose -Message "[Iteration : ${i}] Selected template $($randomTemplate | Out-String)"
+    if ($FixedDuration) 
+    {
+        Set-TemplateDuration -InputObject $RandomTemplate -Key d -Value $FixedDuration
+    }
+    else
+    {
+        Set-TemplateDuration -InputObject $RandomTemplate -Key d -Value $(Get-Random -Minimum 300 -Maximum 3600)
+    }
+    Write-Verbose -Message 
+    .\Start-Sweep.ps1 @randomTemplate
 
     Write-Verbose -Message "[Iteration : ${i}] Sleeping for 30 seconds ..."
     Start-Sleep -Seconds 30
