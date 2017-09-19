@@ -91,10 +91,10 @@ Function Copy-Archive {
 # return a hashtable of the volume creation params based on the recommendation
 Function Get-S2DClusterVolumeCreationParams 
 {
-    [OutputType([System.Collection.Hashtable])]
+    [OutputType([System.Collections.Hashtable])]
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory=$false)]
         [Int] $VmCount=10,
 
         [Parameter(Mandatory)]
@@ -107,7 +107,7 @@ Function Get-S2DClusterVolumeCreationParams
     $ClusterNodes = Get-ClusterNode -ErrorAction Stop
     # Below function determines the required size for the CSV volumes based on the number of VMs and
     # the template VHDX size
-    $CSVSize = (Get-CSVSize -VMCount $VMCount -VMTemplatePath $VMTemplatePath) * 1GB
+    $CSVSize = Get-CSVSize -VMCount $VMCount -VMTemplatePath $VMTemplatePath
     if ($ClusterNodes.Count -le 3 ) 
     {
         # Case with 2 or 3 servers
@@ -124,7 +124,7 @@ Function Get-S2DClusterVolumeCreationParams
             @{
                 FileSystem = 'CSVFS_ReFS';
                 ResiliencySettingName = 'Mirror'; # Create Mirror volume (for performance)
-                Size = $CSVSize
+                Size = $CSVSize;
             }
         }
         else 
@@ -132,7 +132,7 @@ Function Get-S2DClusterVolumeCreationParams
             @{
                 FileSystem = 'CSVFS_ReFS';
                 StorageTierfriendlyNames = @("Performance","Capacity")
-                StorageTierSizes = @($CSVSize, 200GB)
+                StorageTierSizes = @($CSVSize, (200 * 1GB));
             }
         }
         
@@ -158,15 +158,13 @@ Function Get-CSVSize {
         [Int]$BufferSize = 10
 
     )
-    $Size = 1024 # This is the default size of 1024 GB (1TB)
+    $Size =  1024 * 1GB # This is the default size of 1024 GB (1TB)
     Try 
     {
         # Analyze the template VHD
-        $FileInfo = Get-Item -Path $VMTemplatePath -Credential $ShareCredential -ErrorAction Stop
-        $FileSize = [Math]::Round($($FileInfo.Length / 1GB))
-
+        $FileSize = (Get-VHD -Path $VMTemplatePath).Size
         # Determine the total size requried for the required VMCount
-        $Size = ($FileSize * $VMCount) + $BufferSize 
+        $Size = ($FileSize * $VMCount) + ($BufferSize * 1GB) 
 
         # send the result back
         Write-Output -InputObject $Size
