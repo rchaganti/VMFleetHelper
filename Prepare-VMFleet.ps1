@@ -43,7 +43,7 @@ param (
     [Switch] $SkipVMFleetCreation,
 
     [Parameter()]
-    [Switch] $SkipCSVCreation
+    [Switch] $SkipCSVCreation,
 
     # Specify this switch to skip creation of Multi-resilient volumes (less performant as of now)
     [Switch]$SkipMRV
@@ -71,7 +71,7 @@ process
     Expand-Archive -Path "${env:TEMP}\${vmFleetFileName}" -DestinationPath $env:TEMP -Force
 
     #Copy VMFleet folder to C:\ as source for Install-VmFleet.ps1
-    copy -Path "${env:Temp}\diskspd-master\Frameworks\VMFleet" -Destination C:\VMFleet -Recurse
+    Copy-Item -Path "${env:Temp}\diskspd-master\Frameworks\VMFleet" -Destination C:\VMFleet -Recurse
 
     #Clean up Temp
     Remove-Item -Path "${env:TEMP}\${vmFleetFileName}" -Force
