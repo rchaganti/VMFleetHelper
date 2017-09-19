@@ -106,8 +106,8 @@ process
         try
         {
             Write-Verbose -Message 'Creating CSV volumes for VMFleet runs'
-            $NewVolumeParam = Get-S2DClusterVolumeCreationParam # This is a helper function to generate params automatically for CSV creation below
-            Get-ClusterNode |% { New-Volume -StoragePoolFriendlyName "S2D*" -FriendlyName $_ @NewVolumeParam }
+            $NewVolumeParam = Get-S2DClusterVolumeCreationParams -VMTemplatePath $VMTemplatePath -VMCount $VmCount # This is a helper function to generate params automatically for CSV creation below
+            Get-ClusterNode |ForEach-Object -Process { New-Volume -StoragePoolFriendlyName "S2D*" -FriendlyName $PSItem.Name @NewVolumeParam }
             New-Volume -StoragePoolFriendlyName "*s2d*" -FriendlyName collect -FileSystem CSVFS_ReFS -Size 1TB 
         }
         catch
@@ -149,7 +149,7 @@ process
 
             if ($ShareCredential)
             {
-                Credential = $ShareCredential
+                $vhdCopyArgs.Add('Credential',$ShareCredential)
             }
         
             try
