@@ -73,12 +73,12 @@ Function Copy-Archive {
 
     if ($URI.IsUnc)
     {
-        Copy-ArchiveFromUNC @PSBoundParameters
+        Copy-ArchiveFromUNC -Path $URI -Destination $Destination -ShareCredential $ShareCredential
         
     }
      elseif (($URI.Scheme -eq 'https') -or ($URI.Scheme -eq 'https'))
     {
-        Copy-ArchiveFromURI @PSBoundParameters
+        Copy-ArchiveFromURI -Source $URI -Destination $Destination
     }
     else
     {
