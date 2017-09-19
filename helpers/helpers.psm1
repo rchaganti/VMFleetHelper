@@ -60,7 +60,7 @@ Function Copy-Archive {
     param(
         [Parameter(Mandatory)]
         [Alias('Path')]
-        [System.Uri]$URI
+        [System.Uri]$URI,
 
         [Parameter()]
         [Alias('OutFile')]
@@ -104,9 +104,6 @@ Function Get-S2DClusterVolumeCreationParams
     )
     # uses recommendation from here :
     # https://docs.microsoft.com/en-us/windows-server/storage/storage-spaces/create-volumes
-    $HashTable = @{
-        
-    }
     $ClusterNodes = Get-ClusterNode -ErrorAction Stop
     # Below function determines the required size for the CSV volumes based on the number of VMs and
     # the template VHDX size

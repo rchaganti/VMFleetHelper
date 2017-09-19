@@ -49,7 +49,10 @@ param (
     [Switch]$SkipMRV
 
 )
-
+begin
+{
+    Import-Module $PSScriptRoot\helpers\helpers.psm1
+}
 process
 {
     #region VMFleet files
@@ -109,7 +112,7 @@ process
         }
         catch
         {
-            thorw $_
+            throw $_
         }
     }
     #endregion
