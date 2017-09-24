@@ -16,14 +16,14 @@ param (
     [Parameter()]
     [Long] $VmMemory = 4GB,
 
-    [Parameter(Mandatory)]
+    [Parameter()]
     [ValidateScript({$vhdPath = Get-Item -Path $_; ($vhdPath.Extension -eq '.vhd') -or ($vhdPath.Extension -eq '.vhdx')})]
     [String] $VMTemplatePath,
 
-    [Parameter(Mandatory)]
+    [Parameter()]
     [pscredential] $VMAdministratorCredential,
 
-    [Parameter(Mandatory)]
+    [Parameter()]
     [pscredential] $HostConnectCredential,
 
     [Parameter()]
@@ -33,8 +33,10 @@ param (
     [Switch] $SkipVMFleetCreation,
 
     [Parameter()]
-    [Switch] $SkipCSVCreation
+    [Switch] $SkipCSVCreation,
 
+    [Parameter()]
+    [Switch] $SkipInstallVMFleet
 )
 
 process
@@ -172,7 +174,7 @@ process
         try
         {
             Write-Verbose -Message 'Creating CSV volumes for VMFleet runs'
-            Get-ClusterNode |% { New-Volume -StoragePoolFriendlyName "S2D*" -FriendlyName $_ -FileSystem CSVFS_ReFS -StorageTierfriendlyNames Performance,Capacity -StorageTierSizes 1TB , 200GB }
+            Get-ClusterNode |% { New-Volume -StoragePoolFriendlyName "S2D*" -FriendlyName $_ -FileSystem CSVFS_ReFS -StorageTierfriendlyNames Capacity -StorageTierSizes 1TB }
             New-Volume -StoragePoolFriendlyName "*s2d*" -FriendlyName collect -FileSystem CSVFS_ReFS -StorageTierFriendlyNames Capacity -StorageTierSizes 1TB
         }
         catch
@@ -183,19 +185,22 @@ process
     #endregion
 
     #region install-VMFleet
-    try
+    if (-not $SkipInstallVMFleet)
     {
-        Write-Verbose -Message 'Copying VM Fleet files'
-        Set-Location -Path C:\VMFleet
-        .\install-vmfleet.ps1 -source C:\VMFleet
+        try
+        {
+            Write-Verbose -Message 'Copying VM Fleet files'
+            Set-Location -Path C:\VMFleet
+            .\install-vmfleet.ps1 -source C:\VMFleet
 
-        #Copy diskspd
-        Write-Verbose -Message 'Copying diskspd'
-        Copy-Item -Path C:\VMFleet\diskspd.exe -Destination C:\ClusterStorage\Collect\Control\Tools -Force
-    }
-    catch
-    {
-        throw $_
+            #Copy diskspd
+            Write-Verbose -Message 'Copying diskspd'
+            Copy-Item -Path C:\VMFleet\diskspd.exe -Destination C:\ClusterStorage\Collect\Control\Tools -Force
+        }
+        catch
+        {
+            throw $_
+        }
     }
     #endregion
 
